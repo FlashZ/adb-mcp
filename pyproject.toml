@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "adb-mcp"
+version = "0.1.0"
+description = "A comprehensive, structured-output MCP server wrapping the Android Debug Bridge (adb) — drive devices, apps, input, UI, logs, screenshots, files and ports from an agent, with no copy/paste and no unrestricted shell."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "FlashZ" }]
+keywords = ["mcp", "adb", "android", "automation", "reverse-engineering", "agent", "llm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Utilities",
+]
+dependencies = ["mcp>=1.2"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff>=0.4"]
+
+[project.scripts]
+adb-mcp = "adb_mcp.server:main"
+
+[project.urls]
+Homepage = "https://github.com/FlashZ/adb-mcp"
+Issues = "https://github.com/FlashZ/adb-mcp/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["adb_mcp"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E731", "B008"]
