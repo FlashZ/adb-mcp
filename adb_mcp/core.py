@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import functools
 import os
+import shlex
 import shutil
 import subprocess
 from collections.abc import Callable
@@ -137,21 +138,38 @@ def run(
     return cp
 
 
-def shell(shell_args: list[str] | str, serial: str | None = None, timeout: float = 30.0) -> str:
-    """Run `adb shell <args>` and return combined stdout+stderr, stripped.
+def quote_argv(argv: list[str]) -> str:
+    """Join argv into ONE device-shell command line with every token quoted.
 
-    Pass a list for normal args, or a single string when you need device-side
-    shell quoting (e.g. "su -c 'cat /x'")."""
-    args = ["shell"] + (shell_args if isinstance(shell_args, list) else [shell_args])
-    cp = run(args, serial=serial, timeout=timeout)
+    Security-critical: `adb shell a b c` concatenates its argv and runs the
+    result through the device's /system/bin/sh, so an unquoted user string
+    (a package name, dumpsys arg, settings value…) is a device-side shell
+    injection vector. Quoting each token here neutralizes that for every
+    list-mode caller — a payload like "; rm -rf /sdcard" becomes a literal
+    argument, never a second command."""
+    return " ".join(shlex.quote(str(a)) for a in argv)
+
+
+def shell(shell_args: list[str] | str, serial: str | None = None, timeout: float = 30.0) -> str:
+    """Run `adb shell <cmd>` and return combined stdout+stderr, stripped.
+
+    Pass a LIST for normal args — each token is shell-quoted for the device
+    (injection-safe). Pass a STRING only for a command you have deliberately
+    composed with device-side shell syntax (e.g. "su -c 'cat /x'"); the caller
+    is then responsible for quoting untrusted substrings (all such call sites
+    use shlex.quote)."""
+    cmd = quote_argv(shell_args) if isinstance(shell_args, list) else shell_args
+    cp = run(["shell", cmd], serial=serial, timeout=timeout)
     return ((cp.stdout or "") + (cp.stderr or "")).strip()
 
 
 def shell_rc(
     shell_args: list[str] | str, serial: str | None = None, timeout: float = 30.0
 ) -> tuple[int, str]:
-    """Like shell() but also returns the device-side exit code via `; echo $?`."""
-    base = shell_args if isinstance(shell_args, str) else " ".join(shell_args)
+    """Like shell() but also returns the device-side exit code via `; echo $?`.
+
+    List args are quoted (injection-safe); string args are used verbatim."""
+    base = shell_args if isinstance(shell_args, str) else quote_argv(shell_args)
     out = shell(f"{base}; echo __rc=$?", serial=serial, timeout=timeout)
     rc = 0
     if "__rc=" in out:

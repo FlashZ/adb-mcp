@@ -114,5 +114,62 @@ def test_delete_refuses_protected_paths():
     assert res["ok"] is False and "protected" in res["error"]
 
 
+# --- security: device-side shell-injection resistance -----------------------
+
+
+def test_quote_argv_neutralizes_metacharacters():
+    import shlex
+
+    from adb_mcp.core import quote_argv
+
+    # A payload smuggled into a "scoped" arg must stay a single quoted token.
+    cmd = quote_argv(["dumpsys", "battery", "; rm -rf /sdcard"])
+    assert cmd == "dumpsys battery '; rm -rf /sdcard'"
+    for payload in ["&& reboot", "| cat /etc/hosts", "$(id)", "`id`", "; wipe", "\n id"]:
+        q = quote_argv(["echo", payload])
+        assert q == "echo " + shlex.quote(payload)
+
+
+def _capture_shell(monkeypatch):
+    import adb_mcp.core as core
+
+    seen = {}
+
+    class _CP:
+        stdout = ""
+        stderr = ""
+
+    def fake_run(args, serial=None, timeout=30.0, binary=False, check=False):
+        seen["args"] = args
+        return _CP()
+
+    monkeypatch.setattr(core, "run", fake_run)
+    return core, seen
+
+
+def test_shell_list_mode_sends_single_quoted_command(monkeypatch):
+    core, seen = _capture_shell(monkeypatch)
+    core.shell(["echo", "; id"])
+    # adb receives exactly: ["shell", "<one quoted command string>"]
+    assert seen["args"][0] == "shell"
+    assert len(seen["args"]) == 2
+    assert seen["args"][1] == "echo '; id'"
+
+
+def test_shell_string_mode_is_verbatim(monkeypatch):
+    core, seen = _capture_shell(monkeypatch)
+    # Deliberately-composed device shell lines (su -c, redirects) pass through.
+    core.shell("su -c 'cat /data/x'")
+    assert seen["args"][1] == "su -c 'cat /data/x'"
+
+
+def test_run_shell_disabled_by_default(monkeypatch):
+    monkeypatch.delenv("ADB_MCP_ALLOW_SHELL", raising=False)
+    from adb_mcp.tools.system import run_shell
+
+    res = run_shell("id")
+    assert res["ok"] is False and "disabled" in res["error"]
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))

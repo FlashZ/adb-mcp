@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import base64
 import os
+import re
 import time
 from typing import Any
 
 from mcp.server.fastmcp import Image
 
-from ..core import err, ok, run, shell, tool
+from ..core import err, ok, quote_argv, run, shell, tool
 
 
 def _screencap(serial: str | None) -> bytes:
@@ -64,6 +65,8 @@ def record_screen_start(
     """Start recording the screen on-device (screenrecord runs in the background).
     time_limit_s caps duration (screenrecord max 180s per segment). `size` like
     '720x1280' to downscale. Call record_screen_stop to finish and pull the mp4."""
+    if size and not re.fullmatch(r"\d{2,5}x\d{2,5}", size):
+        return err("invalid size — expected WxH like '720x1280'")
     # kill any stale recorder first
     shell(["pkill", "-INT", "screenrecord"], serial)
     args = ["screenrecord", "--time-limit", str(time_limit_s), "--bit-rate", str(bit_rate_mbps * 1_000_000)]
@@ -71,7 +74,8 @@ def record_screen_start(
         args += ["--size", size]
     args.append(_REMOTE_MP4)
     # Fire-and-forget on the device; screenrecord writes until stopped/limit.
-    run(["shell", *args, "&"], serial=serial, timeout=5)
+    # Build one quoted command line (injection-safe) and append the background '&'.
+    run(["shell", quote_argv(args) + " &"], serial=serial, timeout=5)
     return ok(status="recording", remote=_REMOTE_MP4, time_limit_s=time_limit_s)
 
 

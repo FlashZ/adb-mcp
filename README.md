@@ -174,11 +174,23 @@ CI runs the same on Python 3.10–3.12.
 
 ## Safety
 
-adb-mcp is a control surface for a device you own. It ships **no** always-on arbitrary
-shell. The only mutating tools are clearly named (`write_file`, `set_prop`,
-`put_setting`, `clear_app_data`, `uninstall`, `delete_file`, the `set_*` network
-toggles), and `delete_file` guards protected paths. Keep the server pointed at trusted
-devices, and leave `ADB_MCP_ALLOW_SHELL` off unless you need it.
+MCP servers execute local commands and can touch files, logs, and devices, so
+overly permissive ones become dangerous when an agent chains their tools. adb-mcp is
+deliberately scoped:
+
+- **No always-on arbitrary shell.** `run_shell` is the only general-shell tool and it
+  is off unless `ADB_MCP_ALLOW_SHELL=1`.
+- **Injection-hardened.** `adb shell` concatenates its args through the device's `sh`,
+  so every list-form command is `shlex.quote`d in one central place — a payload like
+  `"; rm -rf /sdcard"` in a package name or `dumpsys` arg becomes a literal argument,
+  never a second command. Covered by tests.
+- **Few, guarded mutating tools** — `write_file`, `delete_file` (refuses `/`, `/system`,
+  `/data`, …), `clear_app_data`, `uninstall`, `install_apk`, `set_prop`, `put_setting`,
+  the `set_*` network toggles.
+
+Point it at a device you own and trust, run one server per intended device (use
+`ADB_SERIAL`/`serial`), and leave `ADB_MCP_ALLOW_SHELL` off unless you need it.
+See [SECURITY.md](SECURITY.md) for the full model.
 
 ## License
 
