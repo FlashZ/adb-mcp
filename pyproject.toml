@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "adb-mcp"
+name = "adbmcp"
 version = "0.1.0"
 description = "A comprehensive, structured-output MCP server wrapping the Android Debug Bridge (adb) — drive devices, apps, input, UI, logs, screenshots, files and ports from an agent, with no copy/paste and no unrestricted shell."
 readme = "README.md"
@@ -25,7 +25,7 @@ dependencies = ["mcp>=1.2"]
 dev = ["pytest>=7", "ruff>=0.4"]
 
 [project.scripts]
-adb-mcp = "adb_mcp.server:main"
+adbmcp = "adb_mcp.server:main"
 
 [project.urls]
 Homepage = "https://github.com/FlashZ/adb-mcp"

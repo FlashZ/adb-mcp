@@ -41,10 +41,13 @@ works for any adb task.
 ## Install
 
 ```bash
-pip install -e .            # from a clone
-# or, once published:
-# pip install adb-mcp
+pip install adbmcp          # from PyPI
+# or from a clone:
+pip install -e .
 ```
+
+> PyPI package name is **`adbmcp`**; the import package and `python -m` target are
+> **`adb_mcp`**, and the installed console command is **`adbmcp`**.
 
 Requires Python ≥ 3.10 and the Android platform-tools (`adb`) on your machine.
 `adb` is auto-detected from `ANDROID_HOME`, the default SDK location, scoop, or `PATH`;
@@ -191,6 +194,25 @@ deliberately scoped:
 Point it at a device you own and trust, run one server per intended device (use
 `ADB_SERIAL`/`serial`), and leave `ADB_MCP_ALLOW_SHELL` off unless you need it.
 See [SECURITY.md](SECURITY.md) for the full model.
+
+## Publishing to PyPI (maintainer)
+
+Releases are published to PyPI by the [`release`](.github/workflows/release.yml)
+workflow using **Trusted Publishing** (OIDC) — no API tokens are stored. One-time
+setup on PyPI, then every tagged release publishes itself:
+
+1. On PyPI → *Your projects* → *Publishing*, add a **pending trusted publisher**:
+   - PyPI project name: `adbmcp`
+   - Owner: `FlashZ`, Repository: `adb-mcp`
+   - Workflow filename: `release.yml`
+   - Environment: `pypi`
+2. Cut a release to trigger it:
+   ```bash
+   git tag v0.1.0 && git push origin v0.1.0
+   # or: gh release create v0.1.0 --generate-notes
+   ```
+
+The workflow builds the sdist+wheel, runs `twine check`, and uploads.
 
 ## License
 
