@@ -55,14 +55,33 @@ override with `ADB_PATH`.
 
 ## Register with an MCP client
 
-**Claude Code** (`.mcp.json` in your project, or `claude mcp add`):
+An MCP server is just a program the client launches and talks to over stdio.
+"Installing" it means telling your client **what command to run** plus any env — the
+same three things everywhere: `command`, `args`, `env`. After `pip install adbmcp`
+you get both an `adbmcp` command and `python -m adb_mcp.server`; use whichever your
+client resolves (see the [Windows PATH note](#windows-path-note) if a bare `adbmcp`
+isn't found). Sanity-check it launches:
+
+```bash
+adbmcp        # starts and waits on stdio; Ctrl-C to exit. No output = healthy.
+```
+
+<details open>
+<summary><b>Claude Code</b> (CLI)</summary>
+
+```bash
+claude mcp add adb --env ADB_SERIAL=RFCWC17BKJY -- adbmcp
+```
+
+Add `--scope user` to enable it in every project. Or drop a `.mcp.json` in a project
+root (see [`examples/mcp.json`](examples/mcp.json)):
 
 ```jsonc
 {
   "mcpServers": {
     "adb": {
-      "command": "python",
-      "args": ["-m", "adb_mcp.server"],
+      "command": "adbmcp",
+      "args": [],
       "env": {
         "ADB_SERIAL": "RFCWC17BKJY",   // optional default device
         "ADB_MCP_ALLOW_SHELL": "0"      // set "1" to enable run_shell
@@ -72,11 +91,108 @@ override with `ADB_PATH`.
 }
 ```
 
-```bash
-claude mcp add adb -- python -m adb_mcp.server
-```
+Run `/mcp` inside Claude Code to confirm it connected.
+</details>
 
-An example config lives in [`examples/mcp.json`](examples/mcp.json).
+<details>
+<summary><b>Claude Desktop</b></summary>
+
+Edit `claude_desktop_config.json` (**Windows:** `%APPDATA%\Claude\`, **macOS:**
+`~/Library/Application Support/Claude/`) and restart the app:
+
+```json
+{
+  "mcpServers": {
+    "adb": {
+      "command": "adbmcp",
+      "args": [],
+      "env": { "ADB_SERIAL": "RFCWC17BKJY" }
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><b>Codex</b> (OpenAI Codex CLI)</summary>
+
+`codex mcp add adb -- adbmcp`, or add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.adb]
+command = "adbmcp"
+args = []
+
+[mcp_servers.adb.env]
+ADB_SERIAL = "RFCWC17BKJY"
+```
+</details>
+
+<details>
+<summary><b>opencode</b></summary>
+
+Add to `opencode.json` (project root) or `~/.config/opencode/opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "adb": {
+      "type": "local",
+      "command": ["adbmcp"],
+      "enabled": true,
+      "environment": { "ADB_SERIAL": "RFCWC17BKJY" }
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><b>Cursor</b></summary>
+
+`.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global) — same shape as Claude:
+
+```json
+{
+  "mcpServers": {
+    "adb": { "command": "adbmcp", "args": [], "env": { "ADB_SERIAL": "RFCWC17BKJY" } }
+  }
+}
+```
+</details>
+
+<details>
+<summary><b>VS Code</b> (Copilot Agent mode)</summary>
+
+`.vscode/mcp.json` — note the `servers` key and explicit `type`:
+
+```json
+{
+  "servers": {
+    "adb": { "type": "stdio", "command": "adbmcp", "args": [], "env": { "ADB_SERIAL": "RFCWC17BKJY" } }
+  }
+}
+```
+</details>
+
+Any other MCP-capable client (Cline, Zed, Windsurf, …) works the same way — point it at
+the `adbmcp` command with your env; only the config file location differs.
+
+<a id="windows-path-note"></a>
+> **Windows PATH note.** Clients spawn the server in their own environment and may not
+> inherit your shell's PATH, so a bare `adbmcp` can fail to resolve. If a client won't
+> start it, use the absolute interpreter + module form (and pin `ADB_PATH` too):
+> ```json
+> {
+>   "command": "C:\\Users\\you\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+>   "args": ["-m", "adb_mcp.server"],
+>   "env": {
+>     "ADB_PATH": "C:\\Users\\you\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe",
+>     "ADB_SERIAL": "RFCWC17BKJY"
+>   }
+> }
+> ```
 
 ## Configuration
 

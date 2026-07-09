@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "adb": {
-      "command": "python",
-      "args": ["-m", "adb_mcp.server"],
+      "command": "adbmcp",
+      "args": [],
       "env": {
         "ADB_SERIAL": "",
         "ADB_MCP_ALLOW_SHELL": "0"
