@@ -311,24 +311,6 @@ Point it at a device you own and trust, run one server per intended device (use
 `ADB_SERIAL`/`serial`), and leave `ADB_MCP_ALLOW_SHELL` off unless you need it.
 See [SECURITY.md](SECURITY.md) for the full model.
 
-## Publishing to PyPI (maintainer)
-
-Releases are published to PyPI by the [`release`](.github/workflows/release.yml)
-workflow using **Trusted Publishing** (OIDC) — no API tokens are stored. One-time
-setup on PyPI, then every tagged release publishes itself:
-
-1. On PyPI → *Your projects* → *Publishing*, add a **pending trusted publisher**:
-   - PyPI project name: `adbmcp`
-   - Owner: `FlashZ`, Repository: `adb-mcp`
-   - Workflow filename: `release.yml`
-   - Environment: `pypi`
-2. Cut a release to trigger it:
-   ```bash
-   git tag v0.1.0 && git push origin v0.1.0
-   # or: gh release create v0.1.0 --generate-notes
-   ```
-
-The workflow builds the sdist+wheel, runs `twine check`, and uploads.
 
 ## License
 
