@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import functools
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -132,6 +133,8 @@ def run(
         )
     except subprocess.TimeoutExpired as e:
         raise AdbError(f"adb timed out after {timeout}s: {' '.join(args)}") from e
+    except OSError as e:
+        raise AdbError(f"could not start adb: {e}") from e
     if check and cp.returncode != 0:
         msg = (cp.stderr if not binary else b"").strip() if not binary else ""
         raise AdbError(f"adb {' '.join(args)} failed (rc={cp.returncode}): {msg}")
@@ -171,14 +174,11 @@ def shell_rc(
     List args are quoted (injection-safe); string args are used verbatim."""
     base = shell_args if isinstance(shell_args, str) else quote_argv(shell_args)
     out = shell(f"{base}; echo __rc=$?", serial=serial, timeout=timeout)
-    rc = 0
-    if "__rc=" in out:
-        out, _, tail = out.rpartition("__rc=")
-        try:
-            rc = int(tail.strip().split()[0])
-        except (ValueError, IndexError):
-            rc = 0
-    return rc, out.strip()
+    markers = list(re.finditer(r"(?m)^__rc=(\d+)\s*$", out))
+    if not markers:
+        raise AdbError(f"adb shell did not report an exit code: {out}")
+    marker = markers[-1]
+    return int(marker.group(1)), out[: marker.start()].strip()
 
 
 def tool(*d_args, **d_kwargs) -> Callable:

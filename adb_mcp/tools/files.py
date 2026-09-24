@@ -73,7 +73,7 @@ def pull(remote: str, local: str, serial: str | None = None) -> dict[str, Any]:
     """Pull a file/dir from the device to host path `local`."""
     os.makedirs(os.path.dirname(os.path.abspath(local)), exist_ok=True)
     cp = run(["pull", remote, local], serial=serial, timeout=300)
-    exists = os.path.exists(local)
+    exists = cp.returncode == 0 and os.path.exists(local)
     return {
         "remote": remote,
         "local": local,
@@ -123,7 +123,9 @@ def write_file(remote: str, content: str, as_root: bool = False, serial: str | N
         tmp.close()
         if as_root:
             staging = "/data/local/tmp/" + posixpath.basename(remote) + ".adbmcp"
-            run(["push", tmp.name, staging], serial=serial, timeout=120)
+            pushed = run(["push", tmp.name, staging], serial=serial, timeout=120)
+            if pushed.returncode != 0:
+                return err((pushed.stderr or "staging push failed").strip(), remote=remote)
             cp_cmd = f"cp {shlex.quote(staging)} {shlex.quote(remote)}"
             rc, out = shell_rc(f"su -c {shlex.quote(cp_cmd)}", serial)
             shell(["rm", "-f", staging], serial)
@@ -152,7 +154,7 @@ def delete_file(
 ) -> dict[str, Any]:
     """Delete a device file or (recursive=True) directory. DESTRUCTIVE.
     Refuses obviously dangerous roots like '/', '/system', '/data'."""
-    norm = remote.rstrip("/")
+    norm = posixpath.normpath("/" + remote.lstrip("/")) if remote.startswith("/") else ""
     if norm in ("", "/", "/system", "/data", "/sdcard", "/vendor", "/product"):
         return err(f"refusing to delete protected path: {remote}")
     flag = "-rf" if recursive else "-f"
